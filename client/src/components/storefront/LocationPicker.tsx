@@ -269,7 +269,7 @@ export function LocationPicker() {
               </span>
             </div>
           </div>
-          <button onClick={closePicker} className="flex items-center justify-center w-9 h-9 rounded-full bg-[#364F9F] text-[#F05B4E] transition-all duration-200 hover:bg-[#2a3d7a] shadow-md mt-0.5" data-testid="button-location-close">
+          <button onClick={closePicker} className="flex items-center justify-center w-9 h-9 rounded-full bg-[#364F9F] text-white transition-all duration-200 hover:bg-[#2a3d7a] shadow-md mt-0.5" data-testid="button-location-close">
             <X className="w-4 h-4" />
           </button>
         </div>

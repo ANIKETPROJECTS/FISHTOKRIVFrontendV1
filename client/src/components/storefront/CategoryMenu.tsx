@@ -103,7 +103,7 @@ export function CategoryMenuDropdown({ open, onClose }: Props) {
             }`}
             data-testid="menu-category-all"
           >
-            <div className="w-16 h-16 sm:w-14 sm:h-14 flex-shrink-0 flex items-center justify-center">
+            <div className="w-11 h-11 sm:w-12 sm:h-12 flex-shrink-0 flex items-center justify-center">
               <img src={bagIcon} alt="All" className="w-full h-full object-contain mix-blend-multiply" />
             </div>
             <span className={`text-base sm:text-base font-medium ${activeCategoryName === "All" ? "text-foreground font-semibold" : "text-slate-700"}`}>
