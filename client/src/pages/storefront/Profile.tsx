@@ -87,10 +87,10 @@ const emptyAddress: EmptyAddress = {
   pincode: "", type: "house", label: "Home", instructions: "",
 };
 
-const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode; bgColor?: string; blink?: boolean }> = {
-  pending:          { label: "Order Placed",      color: "text-white border-transparent", icon: null, bgColor: "#F97316", blink: true },
+const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode; bgColor?: string }> = {
+  pending:          { label: "Order Placed",      color: "text-white border-transparent", icon: null, bgColor: "#F97316" },
   confirmed:        { label: "Confirmed",          color: "text-white border-transparent", icon: null, bgColor: "#364F9F" },
-  out_for_delivery: { label: "Out for Delivery",   color: "text-white border-transparent", icon: null, bgColor: "#F97316", blink: true },
+  out_for_delivery: { label: "Out for Delivery",   color: "text-white border-transparent", icon: null, bgColor: "#F97316" },
   delivered:        { label: "Delivered",          color: "text-white border-transparent", icon: null, bgColor: "#22C55E" },
   cancelled:        { label: "Cancelled",          color: "text-white border-transparent", icon: null, bgColor: "#EF4444" },
 };
@@ -139,7 +139,7 @@ const TRACK_STEPS = [
 ];
 const BRAND_RED_FILTER = "brightness(0) saturate(100%) invert(45%) sepia(89%) saturate(1620%) hue-rotate(331deg) brightness(99%) contrast(89%)";
 const BRAND_BLUE_FILTER = "brightness(0) saturate(100%) invert(28%) sepia(48%) saturate(1517%) hue-rotate(212deg) brightness(91%) contrast(89%)";
-const BRAND_ORANGE_FILTER = "brightness(0) saturate(100%) invert(59%) sepia(92%) saturate(1400%) hue-rotate(347deg) brightness(103%) contrast(97%)";
+const BRAND_ORANGE_FILTER = "brightness(0) saturate(100%) invert(63%) sepia(76%) saturate(1515%) hue-rotate(347deg) brightness(103%) contrast(96%)";
 const TRACK_STATUS_ORDER = ["pending", "confirmed", "out_for_delivery", "delivered"];
 
 function TrackOrderModal({ order, onClose }: { order: OrderRequest; onClose: () => void }) {
@@ -275,7 +275,7 @@ function OrderCard({ order, productImageMap }: { order: OrderRequest; productIma
           </div>
         </div>
         <div
-          className={`flex items-center gap-1 px-3 py-1 rounded-full border text-xs font-semibold shrink-0 ${status.color}${status.blink ? " badge-blink" : ""}`}
+          className={`flex items-center gap-1 px-3 py-1 rounded-full border text-xs font-semibold shrink-0 ${status.color}`}
           style={status.bgColor ? { backgroundColor: status.bgColor } : undefined}
         >
           {status.icon}
@@ -475,7 +475,7 @@ function OrderGridCard({ order, productImageMap }: { order: OrderRequest; produc
           <Package className="w-3.5 h-3.5 text-primary" />
         </div>
         <div
-          className={`flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-semibold ${status.color}${status.blink ? " badge-blink" : ""}`}
+          className={`flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-semibold ${status.color}`}
           style={status.bgColor ? { backgroundColor: status.bgColor } : undefined}
         >
           {status.label}
