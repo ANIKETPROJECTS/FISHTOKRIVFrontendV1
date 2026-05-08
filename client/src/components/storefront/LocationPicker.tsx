@@ -46,70 +46,51 @@ function useTypewriter(phrases: string[], speed = 60, pause = 1800) {
   return displayed;
 }
 
-/* ── Photon (Komoot) for forward search ─────────────────────────────── */
-interface PhotonFeature {
-  type: "Feature";
-  geometry: { type: "Point"; coordinates: [number, number] };
-  properties: {
-    osm_id?: number;
-    name?: string;
-    street?: string;
-    locality?: string;
-    district?: string;
-    city?: string;
-    county?: string;
-    state?: string;
-    country?: string;
-    postcode?: string;
-    type?: string;
-  };
+/* ── Google Maps (loaded via index.html script tag) ─────────────────── */
+declare global { interface Window { google: any } }
+
+interface GooglePrediction {
+  place_id: string;
+  description: string;
+  structured_formatting: { main_text: string; secondary_text: string };
 }
 
-async function photonSearch(query: string): Promise<PhotonFeature[]> {
-  try {
-    const res = await fetch(
-      `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=8&lang=en&bbox=68.7,8.4,97.3,37.1`,
-      { headers: { "Accept-Language": "en" } }
+async function googlePlacesSearch(query: string): Promise<GooglePrediction[]> {
+  if (!window.google?.maps?.places) return [];
+  return new Promise((resolve) => {
+    const svc = new window.google.maps.places.AutocompleteService();
+    svc.getPlacePredictions(
+      { input: query, componentRestrictions: { country: "in" }, types: ["geocode"] },
+      (preds: GooglePrediction[] | null, status: string) => {
+        if (status !== "OK" || !preds) { resolve([]); return; }
+        resolve(preds);
+      }
     );
-    if (!res.ok) return [];
-    const data = await res.json();
-    return (data.features ?? []).filter(
-      (f: PhotonFeature) => f.properties.country === "India" || !f.properties.country
-    );
-  } catch {
-    return [];
-  }
+  });
 }
 
-function photonTitle(f: PhotonFeature): string {
-  const p = f.properties;
-  return p.name || p.locality || p.district || p.city || "";
+async function getPincodeFromPlaceId(placeId: string): Promise<string | null> {
+  if (!window.google?.maps) return null;
+  return new Promise((resolve) => {
+    const geocoder = new window.google.maps.Geocoder();
+    geocoder.geocode({ placeId }, (results: any, status: string) => {
+      if (status !== "OK" || !results?.[0]) { resolve(null); return; }
+      const comp = results[0].address_components.find((c: any) => c.types.includes("postal_code"));
+      resolve(comp?.long_name ?? null);
+    });
+  });
 }
 
-function photonSubtitle(f: PhotonFeature): string {
-  const p = f.properties;
-  const parts: string[] = [];
-  if (p.locality && p.locality !== photonTitle(f)) parts.push(p.locality);
-  if (p.district && p.district !== photonTitle(f)) parts.push(p.district);
-  if (p.city && p.city !== photonTitle(f)) parts.push(p.city);
-  if (p.state) parts.push(p.state);
-  if (p.country) parts.push(p.country);
-  return parts.slice(0, 4).join(", ");
-}
-
-/* ── Nominatim reverse geocode for GPS ─────────────────────────────── */
 async function reverseGeocode(lat: number, lon: number): Promise<string | null> {
-  try {
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&addressdetails=1`,
-      { headers: { "Accept-Language": "en" } }
-    );
-    if (!res.ok) return null;
-    const data = await res.json();
-    return data?.address?.postcode?.replace(/\s/g, "") ?? null;
-  } catch {
-    return null;
-  }
+  if (!window.google?.maps) return null;
+  return new Promise((resolve) => {
+    const geocoder = new window.google.maps.Geocoder();
+    geocoder.geocode({ location: { lat, lng: lon } }, (results: any, status: string) => {
+      if (status !== "OK" || !results?.[0]) { resolve(null); return; }
+      const comp = results[0].address_components.find((c: any) => c.types.includes("postal_code"));
+      resolve(comp?.long_name ?? null);
+    });
+  });
 }
 
 export function LocationPicker() {
@@ -120,7 +101,7 @@ export function LocationPicker() {
   const [geoMessage, setGeoMessage] = useState("");
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<PhotonFeature[]>([]);
+  const [searchResults, setSearchResults] = useState<GooglePrediction[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [searchStatus, setSearchStatus] = useState<"idle" | "serviceable" | "unserviceable">("idle");
   const [searchMessage, setSearchMessage] = useState("");
@@ -185,7 +166,7 @@ export function LocationPicker() {
     setIsSearching(true);
     setShowDropdown(true);
     searchTimeoutRef.current = setTimeout(async () => {
-      const results = await photonSearch(q);
+      const results = await googlePlacesSearch(q);
       setSearchResults(results);
       setIsSearching(false);
     }, 350);
@@ -195,7 +176,6 @@ export function LocationPicker() {
   const checkServiceability = useCallback((
     pincode: string | undefined,
     locationName: string,
-    _feature?: PhotonFeature
   ) => {
     if (pincode) {
       const clean = pincode.replace(/\s/g, "");
@@ -219,13 +199,15 @@ export function LocationPicker() {
     return false;
   }, [allSubHubs, superHubs, setHub]);
 
-  const handleSearchResultSelect = useCallback((feature: PhotonFeature) => {
-    const title = photonTitle(feature);
+  const handleSearchResultSelect = useCallback(async (prediction: GooglePrediction) => {
+    const title = prediction.structured_formatting.main_text;
     setSearchQuery("");
     setShowDropdown(false);
     setSearchResults([]);
+    setIsSearching(true);
+    const pincode = await getPincodeFromPlaceId(prediction.place_id);
     setIsSearching(false);
-    checkServiceability(feature.properties.postcode, title, feature);
+    checkServiceability(pincode ?? undefined, title);
   }, [checkServiceability]);
 
   const handleDetectLocation = useCallback(async () => {
@@ -396,29 +378,21 @@ export function LocationPicker() {
                 <div className="px-4 py-3 text-sm text-slate-400 font-normal">No results found. Try a different term.</div>
               ) : (
                 <div className="max-h-[280px] overflow-y-auto">
-                  {searchResults.map((feature, i) => {
-                    const title = photonTitle(feature);
-                    const subtitle = photonSubtitle(feature);
-                    const postcode = feature.properties.postcode;
-                    return (
-                      <button
-                        key={`${feature.properties.osm_id ?? i}`}
-                        onClick={() => handleSearchResultSelect(feature)}
-                        className="w-full flex items-start gap-3 px-4 py-3.5 text-left hover:bg-slate-50 transition-colors border-b border-border/10 last:border-0"
-                      >
-                        <div className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center shrink-0 mt-0.5">
-                          <MapPin className="w-4 h-4 text-slate-400" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-semibold text-slate-800 truncate">{title}</p>
-                          <p className="text-xs text-slate-400 font-normal truncate mt-0.5">{subtitle}</p>
-                          {postcode && (
-                            <p className="text-[11px] font-medium mt-0.5" style={{ color: BRAND_BLUE }}>Pincode: {postcode}</p>
-                          )}
-                        </div>
-                      </button>
-                    );
-                  })}
+                  {searchResults.map((prediction) => (
+                    <button
+                      key={prediction.place_id}
+                      onClick={() => handleSearchResultSelect(prediction)}
+                      className="w-full flex items-start gap-3 px-4 py-3.5 text-left hover:bg-slate-50 transition-colors border-b border-border/10 last:border-0"
+                    >
+                      <div className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center shrink-0 mt-0.5">
+                        <MapPin className="w-4 h-4 text-slate-400" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-slate-800 truncate">{prediction.structured_formatting.main_text}</p>
+                        <p className="text-xs text-slate-400 font-normal truncate mt-0.5">{prediction.structured_formatting.secondary_text}</p>
+                      </div>
+                    </button>
+                  ))}
                 </div>
               )}
             </div>
