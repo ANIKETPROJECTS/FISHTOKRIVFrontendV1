@@ -1131,9 +1131,11 @@ export async function registerRoutes(
         ],
         carouselCards: [],
         location: {},
-        attributes: {},
-        paramsFallbackValue: { FirstName: "user" },
+        attributes: { name: otp },
+        paramsFallbackValue: { FirstName: otp },
       };
+
+      console.log(`[OTP] Sending payload to AiSensy:`, JSON.stringify(payload, null, 2));
 
       const response = await fetch("https://backend.aisensy.com/campaign/t1/api/v2", {
         method: "POST",
@@ -1141,9 +1143,11 @@ export async function registerRoutes(
         body: JSON.stringify(payload),
       });
 
+      const responseText = await response.text();
+      console.log(`[OTP] AiSensy response ${response.status}:`, responseText);
+
       if (!response.ok) {
-        const errText = await response.text();
-        console.error(`[OTP] AiSensy error ${response.status}: ${errText}`);
+        console.error(`[OTP] AiSensy error ${response.status}: ${responseText}`);
         return res.status(502).json({ message: "Failed to send OTP. Please try again." });
       }
 
