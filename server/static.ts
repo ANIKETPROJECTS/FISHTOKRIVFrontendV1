@@ -10,7 +10,14 @@ export function serveStatic(app: Express) {
     );
   }
 
-  app.use(express.static(distPath));
+  // Long-lived cache for hashed JS/CSS/image assets (Vite adds content hash to filenames)
+  app.use("/assets", express.static(path.join(distPath, "assets"), {
+    maxAge: "1y",
+    immutable: true,
+  }));
+
+  // Short cache for index.html and other root files
+  app.use(express.static(distPath, { maxAge: "1h" }));
 
   app.use("/{*path}", (_req, res) => {
     res.sendFile(path.resolve(distPath, "index.html"));

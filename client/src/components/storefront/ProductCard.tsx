@@ -47,6 +47,8 @@ export function ProductCard({ product }: { product: Product }) {
         <img
           src={product.imageUrl || getFallbackImage(product.category)}
           alt={product.name}
+          loading="lazy"
+          decoding="async"
           className={`w-full h-full object-cover transition-transform duration-700 ${
             isUnavailable ? "grayscale opacity-60" : "group-hover:scale-110"
           }`}

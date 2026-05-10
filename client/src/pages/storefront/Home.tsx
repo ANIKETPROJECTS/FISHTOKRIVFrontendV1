@@ -48,7 +48,7 @@ function ComboImages({ images }: { images: string[] }) {
             zIndex: i,
           }}
         >
-          <img src={img} alt="" className="w-full h-full object-cover" />
+          <img src={img} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" />
           {i < n - 1 && (
             <div className="absolute top-0 right-0 bottom-0 w-4 bg-gradient-to-r from-transparent to-black/10" />
           )}
@@ -169,7 +169,7 @@ export default function Home() {
               key={slide.id}
               className={`absolute inset-0 transition-opacity duration-1000 ${index === currentBanner ? 'opacity-100' : 'opacity-0'}`}
             >
-              <img src={slide.imageUrl} alt={slide.title || `Banner ${index + 1}`} className="w-full h-full object-cover" />
+              <img src={slide.imageUrl} alt={slide.title || `Banner ${index + 1}`} loading={index === 0 ? "eager" : "lazy"} decoding="async" className="w-full h-full object-cover" />
             </div>
           ))}
           {carouselSlides.length > 1 && (
@@ -204,6 +204,8 @@ export default function Home() {
                     <img
                       src={cat.imageUrl}
                       alt={cat.name}
+                      loading="lazy"
+                      decoding="async"
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                     />
                   ) : (

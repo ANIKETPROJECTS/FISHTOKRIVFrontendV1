@@ -286,7 +286,11 @@ export async function registerRoutes(
     const img = getImage(req.params.id);
     if (!img) return res.status(404).end();
     res.setHeader("Content-Type", img.mimeType);
-    res.setHeader("Cache-Control", "public, max-age=86400");
+    res.setHeader("Cache-Control", "public, max-age=604800, stale-while-revalidate=86400");
+    res.setHeader("ETag", `"${req.params.id}"`);
+    if (req.headers["if-none-match"] === `"${req.params.id}"`) {
+      return res.status(304).end();
+    }
     res.send(img.data);
   });
 
