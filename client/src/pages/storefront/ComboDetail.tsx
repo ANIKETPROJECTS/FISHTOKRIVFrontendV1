@@ -457,6 +457,7 @@ export default function ComboDetail() {
     for (let i = 0; i < qty; i++) {
       addToCart({
         id: -Math.abs(parseInt(combo.id.slice(-6), 16) || 9999),
+        originalId: combo.id,
         name: combo.name,
         price: combo.discountedPrice,
         category: "Combo",

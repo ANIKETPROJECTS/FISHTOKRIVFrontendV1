@@ -489,7 +489,7 @@ export function CartDrawer() {
       return;
     }
     const fullAddress = [selected.building, selected.street, selected.area, selected.pincode].filter(Boolean).join(", ");
-    const orderItems = items.map(i => ({ productId: i.id, quantity: i.quantity, name: i.name, price: i.price, imageUrl: i.imageUrl ?? null }));
+    const orderItems = items.map(i => ({ productId: i.originalId ?? String(i.id), quantity: i.quantity, name: i.name, price: i.price, imageUrl: i.imageUrl ?? null }));
     const isNextDay = (selectedTimeslot as any).isNextDay === true;
     const nextDaySubSlot = isNextDay ? timeslots.find(t => t.id === selectedNextDaySubSlotId) : null;
     if (isNextDay && !nextDaySubSlot) {

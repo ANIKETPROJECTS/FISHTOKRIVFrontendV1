@@ -8,6 +8,7 @@ export interface CartItem extends Omit<Product, 'id'> {
   quantity: number;
   instruction?: string;
   isCombo?: boolean;
+  originalId?: string;
 }
 
 interface CartContextType {
