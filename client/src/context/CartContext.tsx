@@ -54,38 +54,51 @@ const CartContext = createContext<CartContextType | null>(null);
  *   minus however many of THIS combo are already in the cart.
  */
 function calcMaxQty(item: CartItem, allItems: CartItem[]): number {
-  if (item.isCombo && item.comboIncludes && item.comboIncludes.length > 0) {
-    let minAllowed = Infinity;
+  if (item.isCombo) {
+    // ── Combo with full per-product data ──────────────────────────────────
+    if (item.comboIncludes && item.comboIncludes.length > 0) {
+      let minAllowed = Infinity;
 
-    for (const inc of item.comboIncludes) {
-      if (inc.availableQty === null) continue;
-      const stock = inc.availableQty;
+      for (const inc of item.comboIncludes) {
+        if (inc.availableQty === null) continue;
+        const stock = inc.availableQty;
 
-      // How much of this product is consumed by OTHER cart items (not self)
-      const consumedByOthers = allItems.reduce((total, ci) => {
-        if (ci.id === item.id) return total;
-        if (!ci.isCombo && String(ci.id) === inc.productId) return total + ci.quantity;
-        if (ci.isCombo && ci.comboIncludes) {
-          const found = ci.comboIncludes.find((x) => x.productId === inc.productId);
-          if (found) return total + ci.quantity * found.quantity;
-        }
-        return total;
-      }, 0);
+        // Units of this ingredient consumed by OTHER cart items (not self)
+        const consumedByOthers = allItems.reduce((total, ci) => {
+          if (ci.id === item.id) return total; // skip self
+          // Individual product matching this ingredient
+          if (!ci.isCombo && String(ci.id) === inc.productId) return total + ci.quantity;
+          // Another combo that also uses this ingredient
+          if (ci.isCombo && ci.comboIncludes) {
+            const found = ci.comboIncludes.find((x) => x.productId === inc.productId);
+            if (found) return total + ci.quantity * found.quantity;
+          }
+          return total;
+        }, 0);
 
-      const remaining = stock - consumedByOthers;
-      const maxForThisProduct = Math.floor(remaining / inc.quantity);
-      minAllowed = Math.min(minAllowed, Math.max(0, maxForThisProduct));
+        const perUnit = inc.quantity || 1; // default 1 if field missing in DB
+        const remaining = stock - consumedByOthers;
+        const maxForThisIngredient = Math.floor(remaining / perUnit);
+        minAllowed = Math.min(minAllowed, Math.max(0, maxForThisIngredient));
+      }
+
+      // minAllowed = total combo units allowed in cart (including already-there quantity)
+      return minAllowed === Infinity ? 999 : minAllowed;
     }
 
-    // minAllowed is the TOTAL allowed in cart (includes what's already there)
-    return minAllowed === Infinity ? 999 : minAllowed;
+    // ── Combo without per-product data (fallback: use pre-computed availableQty min) ──
+    const stock = item.availableQty;
+    if (stock === null) return 999;
+    return Math.max(0, stock);
+
   } else {
-    // Individual product
+    // ── Individual product ────────────────────────────────────────────────
     const stock = item.availableQty;
     if (stock === null) return 999;
 
+    // Units consumed by combos in cart that include this product
     const comboConsumed = allItems.reduce((total, ci) => {
-      if (ci.id === item.id) return total;
+      if (ci.id === item.id) return total; // skip self
       if (ci.isCombo && ci.comboIncludes) {
         const found = ci.comboIncludes.find((x) => x.productId === String(item.id));
         if (found) return total + ci.quantity * found.quantity;

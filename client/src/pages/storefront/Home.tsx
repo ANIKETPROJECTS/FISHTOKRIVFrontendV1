@@ -305,6 +305,7 @@ export default function Home() {
                                         ? Math.min(...qtysWithLimits) : null;
                                       addToCart({
                                         id: -Math.abs(parseInt(combo.id.slice(-6), 16) || 9999),
+                                        originalId: combo.id,
                                         name: combo.name, price: combo.discountedPrice,
                                         category: "Combo", status: "available",
                                         unit: combo.weight, imageUrl: null,
@@ -313,6 +314,11 @@ export default function Home() {
                                         comboImages,
                                         comboCategories,
                                         availableQty: comboAvailableQty,
+                                        comboIncludes: combo.includes.map(inc => ({
+                                          productId: inc.productId,
+                                          quantity: inc.quantity ?? 1,
+                                          availableQty: productMap[inc.productId]?.availableQty ?? null,
+                                        })),
                                       } as any);
                                     }}
                                     className="rounded-full w-9 h-9 p-0 bg-primary hover:bg-[#F05B4E] text-white shadow-md flex items-center justify-center shrink-0 transition-colors"
