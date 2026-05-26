@@ -17,6 +17,7 @@ const orderCouponSchema = new mongoose.Schema(
 
 const deliveryAddressDetailSchema = new mongoose.Schema(
   {
+    _id: { type: mongoose.Schema.Types.ObjectId, default: null },
     name: { type: String, default: null },
     phone: { type: String, default: null },
     building: { type: String, default: null },
@@ -25,7 +26,7 @@ const deliveryAddressDetailSchema = new mongoose.Schema(
     pincode: { type: String, default: null },
     type: { type: String, default: "house" },
     label: { type: String, default: "Home" },
-    instructions: { type: String, default: null },
+    instructions: { type: String, default: "" },
   },
   { _id: false }
 );
@@ -55,12 +56,9 @@ const orderSchema = new mongoose.Schema({
   timeslotStart: { type: String, default: null },
   timeslotEnd: { type: String, default: null },
   deliveryDate: { type: String, default: null },
-  instantDeliveryCharge: { type: Number, default: null },
-  coupon: { type: orderCouponSchema, default: null },
   couponIds: { type: [String], default: [] },
   couponCodes: { type: [String], default: [] },
   coupons: { type: mongoose.Schema.Types.Mixed, default: [] },
-  paymentMethod: { type: String, default: null },
   paymentMode: { type: String, default: null },
   paymentStatus: { type: String, default: "unpaid" },
   payments: { type: mongoose.Schema.Types.Mixed, default: [] },

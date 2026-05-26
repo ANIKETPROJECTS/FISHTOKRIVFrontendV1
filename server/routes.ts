@@ -534,34 +534,57 @@ export async function registerRoutes(
         unit: unit ?? null,
       }));
 
+      // Fetch customer email from DB if not provided in payload
+      let resolvedEmail: string | null = input.email ?? null;
+      if (!resolvedEmail && input.customerId) {
+        try {
+          const { CustomerDbModel } = await import("./customerDb");
+          const cust = await CustomerDbModel.findById(input.customerId).select("email").lean() as any;
+          if (cust?.email) resolvedEmail = cust.email;
+        } catch { /* non-fatal */ }
+      }
+
+      // Build orderInput explicitly — only include fields that match the admin POS schema.
+      // Do NOT spread ...input to avoid leaking frontend-only fields (paymentMethod,
+      // instantDeliveryCharge, couponCode, discountAmount, hubDbName).
       const orderInput: any = {
-        ...input,
-        items: cleanedItems,
         orderId: generatedOrderId,
-        source: "website",
-        deliveryType: input.deliveryType ?? "delivery",
-        scheduleType: input.scheduleType ?? (input.deliveryType === "instant" ? "instant" : "slot"),
+        customerId: input.customerId ?? null,
+        customerName: input.customerName,
+        phone: input.phone,
+        email: resolvedEmail,
+        deliveryArea: input.deliveryArea,
+        address: input.address,
+        deliveryAddressDetail: input.deliveryAddressDetail ?? null,
+        pickupLocation: "",
+        items: cleanedItems,
         subtotal,
         discount,
         slotCharge,
         total,
-        dueAmount: total,
-        paidAmount: 0,
-        paymentStatus: "unpaid",
-        paymentMode,
-        payments: [],
+        status: "pending",
+        notes: input.notes ?? "",
+        source: "online",
+        deliveryType: input.deliveryType ?? "delivery",
+        scheduleType: input.scheduleType ?? "slot",
+        timeslotId: input.timeslotId ?? null,
+        timeslotLabel: input.timeslotLabel ?? null,
+        timeslotStart: input.timeslotStart ?? null,
+        timeslotEnd: input.timeslotEnd ?? null,
+        deliveryDate,
         couponIds,
         couponCodes,
         coupons,
-        deliveryDate,
-        pickupLocation: input.pickupLocation ?? "",
-        notes: input.notes ?? "",
+        paymentStatus: "unpaid",
+        payments: [],
+        paidAmount: 0,
+        dueAmount: total,
+        paymentMode,
+        superHubId: resolvedSuperHubId ?? null,
+        superHubName: resolvedSuperHubName ?? null,
+        subHubId: resolvedSubHubId ?? null,
+        subHubName: resolvedSubHubName ?? null,
         inventoryDeducted: !!input.hubDbName,
-        ...(resolvedCoupon && { coupon: resolvedCoupon }),
-        ...(resolvedSuperHubId && { superHubId: resolvedSuperHubId }),
-        ...(resolvedSuperHubName && { superHubName: resolvedSuperHubName }),
-        ...(resolvedSubHubId && { subHubId: resolvedSubHubId }),
-        ...(resolvedSubHubName && { subHubName: resolvedSubHubName }),
       };
 
       const order = await storage.createOrderRequest(orderInput);

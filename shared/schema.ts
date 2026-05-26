@@ -155,6 +155,7 @@ export type OrderRequest = {
 };
 
 export type DeliveryAddressDetail = {
+  _id?: string | null;
   name?: string | null;
   phone?: string | null;
   building?: string | null;
@@ -190,11 +191,8 @@ export type InsertOrderRequest = {
   timeslotStart?: string | null;
   timeslotEnd?: string | null;
   deliveryDate?: string | null;
-  instantDeliveryCharge?: number | null;
-  coupon?: OrderCoupon | null;
   couponCode?: string | null;
   discountAmount?: number | null;
-  paymentMethod?: string | null;
   paymentMode?: string | null;
   superHubId?: string | null;
   subHubId?: string | null;

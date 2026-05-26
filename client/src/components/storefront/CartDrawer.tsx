@@ -500,7 +500,6 @@ export function CartDrawer() {
       name: i.name,
       price: i.price,
       unit: (i as any).unit ?? null,
-      imageUrl: i.imageUrl ?? null,
     }));
     const slotLabel = selectedTimeslot.isInstant ? "Instant Delivery (Porter)" : selectedTimeslot.label;
     const slotCharge = selectedTimeslot.isInstant ? (selectedTimeslot.extraCharge ?? 0) : 0;
@@ -513,11 +512,12 @@ export function CartDrawer() {
       {
         customerName: selected.name || customer?.name || "",
         phone: selected.phone || customer?.phone || "",
-        email: (customer as any)?.email ?? null,
+        email: customer?.email ?? null,
         customerId: customer?.id ?? null,
         deliveryArea: selected.area,
         address: fullAddress,
         deliveryAddressDetail: {
+          _id: selected.id,
           name: selected.name,
           phone: selected.phone,
           building: selected.building,
@@ -528,7 +528,7 @@ export function CartDrawer() {
           label: selected.label,
           instructions: selected.instructions,
         },
-        notes: selected.instructions || null,
+        notes: selected.instructions || "",
         items: orderItems,
         subtotal,
         discount: discountAmount,
@@ -542,10 +542,8 @@ export function CartDrawer() {
         timeslotStart: (selectedTimeslot as any).startTime ?? null,
         timeslotEnd: (selectedTimeslot as any).endTime ?? null,
         deliveryDate,
-        instantDeliveryCharge: slotCharge > 0 ? slotCharge : null,
         couponCode: appliedCoupon?.code ?? null,
         discountAmount: discountAmount > 0 ? discountAmount : null,
-        paymentMethod: paymentMethod === "online" ? "upi" : "cod",
         paymentMode: paymentMethod === "online" ? "upi" : "cash",
       } as any,
       { onSuccess: () => { setIsSuccess(true); clearCart(); } }

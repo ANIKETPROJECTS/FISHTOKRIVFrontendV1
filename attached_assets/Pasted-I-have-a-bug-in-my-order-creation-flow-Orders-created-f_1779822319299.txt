@@ -1,0 +1,81 @@
+I have a bug in my order creation flow. Orders created from the frontend are missing fields and have inconsistent structure compared to orders created from the Admin panel.
+
+Here are two real order objects from MongoDB for comparison:
+
+--- ADMIN ORDER (correct, use this as the reference/template) ---
+{
+  "_id": { "$oid": "6a15edd66ed6492bca76fd8f" },
+  "orderId": "#FTS202605274",
+  "customerId": "6a15e87a9bbeed61c0e907a9",
+  "customerName": "Sairaj",
+  "phone": "9619523254",
+  "email": "sk@gmail.com",
+  "items": [{ "productId": "...", "name": "Fish", "price": 200, "quantity": 5, "unit": "per kg" }],
+  "subtotal": 1000,
+  "discount": 0,
+  "slotCharge": 0,
+  "total": 1000,
+  "deliveryType": "delivery",
+  "address": "205 Kairali Park · Katemanivali, Kalyan · 421306",
+  "deliveryArea": "Kalyan",
+  "deliveryAddressDetail": { "name": "Sairaj", "phone": "9619523254", "building": "205 Kairali Park", "street": "Katemanivali", "area": "Kalyan", "pincode": "421306", "type": "house", "label": "Home", "instructions": "", "_id": "6a15eb768a188157b473da4d" },
+  "pickupLocation": "",
+  "notes": "",
+  "status": "pending",
+  "source": "admin_manual",
+  "subHubId": "...", "subHubName": "Thane",
+  "superHubId": "...", "superHubName": "Mumbai",
+  "couponIds": [], "couponCodes": [], "coupons": [],
+  "paymentStatus": "unpaid",
+  "payments": [],
+  "paidAmount": 0,
+  "dueAmount": 1000,
+  "paymentMode": "cash",
+  "scheduleType": "slot",
+  "deliveryDate": "2026-05-26",
+  "timeslotId": "...", "timeslotLabel": "12:00 AM - 01:00 AM",
+  "timeslotStart": "12:00 AM", "timeslotEnd": "01:00 AM",
+  "inventoryDeducted": true,
+  "createdAt": { "$date": "2026-05-26T19:00:38.236Z" },
+  "updatedAt": { "$date": "2026-05-26T19:00:38.236Z" }
+}
+
+--- FRONTEND ORDER (broken, has these specific issues) ---
+{
+  "_id": { "$oid": "6a15ed1b8a188157b473da6d" },
+  "orderId": null,                          <-- BUG 1: orderId is null, should be auto-generated like "#FTS202605274"
+  "email": null,                            <-- BUG 2: email is null even though customer has an email on file
+  "source": "online",                       <-- NOTE: this is correct for frontend, keep as "online"
+  "deliveryAddressDetail": {                <-- BUG 3: _id field is missing from deliveryAddressDetail
+    "name": "Sairaj", ...
+    (no _id field)
+  },
+  "notes": null,                            <-- BUG 4: notes is null, should default to empty string ""
+  "items": [{
+    ...
+    "imageUrl": "https://..."               <-- BUG 5: imageUrl is present in frontend order but NOT in admin order schema — remove it or confirm if it should be excluded
+  }],
+  "paymentMethod": "cod",                   <-- BUG 6: extra field "paymentMethod" exists only in frontend order, not in admin schema — remove or consolidate with "paymentMode"
+  "instantDeliveryCharge": null,            <-- BUG 7: extra field "instantDeliveryCharge" present only in frontend order — remove if not needed
+  "coupon": null,                           <-- BUG 8: extra field "coupon" (singular) present only in frontend — remove, already covered by couponIds/couponCodes/coupons arrays
+  "timeslotStart" / "timeslotEnd":          <-- NOTE: present in frontend order too, this is correct
+  "deliveryDate": "2026-05-27"              <-- NOTE: frontend order delivery date is next day, verify this is intentional
+}
+
+WHAT I NEED YOU TO FIX:
+
+1. Find the frontend order creation API route/controller (likely something like POST /orders or createOrder).
+
+2. Fix orderId generation: after saving, auto-generate and assign an orderId in the format "#FTS{YYYYMMDD}{incrementing number}" — look at how the admin panel generates it and reuse the same logic/utility function.
+
+3. Fix email: when creating the order, fetch the customer's email from the customers collection using customerId and populate the email field. Do not leave it null.
+
+4. Fix deliveryAddressDetail: ensure the _id field is included when embedding the address subdocument. If the address comes from the customer's saved address array, include its _id.
+
+5. Fix notes: default to empty string "" instead of null.
+
+6. Clean up extra fields on the frontend order payload: remove paymentMethod (use only paymentMode), remove instantDeliveryCharge (unless it's intentionally used for instant delivery orders), remove coupon (singular) since couponIds/couponCodes/coupons arrays already handle this, and remove imageUrl from items (it's a product display field, not needed in the order record).
+
+7. Make the frontend order creation service/controller use the same shared order-building logic as the admin panel so both stay in sync going forward. Ideally extract a buildOrderObject() utility that both flows call.
+
+Please find the relevant files, show me the current broken code, and apply all the fixes.
