@@ -33,7 +33,6 @@ export type Coupon = {
   discountValue: number;
   minOrderAmount: number;
   maxUsage: number | null;
-  usedCount: number;
   isFirstTimeOnly: boolean;
   isActive: boolean;
   applicableCategories: string[];

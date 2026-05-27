@@ -272,7 +272,7 @@ export async function registerRoutes(
     id: doc._id.toString(), code: doc.code, title: doc.title,
     description: doc.description, type: doc.type, discountValue: doc.discountValue,
     minOrderAmount: doc.minOrderAmount ?? 0, maxUsage: doc.maxUsage ?? null,
-    usedCount: doc.usedCount ?? 0, isFirstTimeOnly: doc.isFirstTimeOnly ?? false,
+    isFirstTimeOnly: doc.isFirstTimeOnly ?? false,
     isActive: doc.isActive ?? true, applicableCategories: doc.applicableCategories ?? [],
     expiresAt: doc.expiresAt ?? null, color: doc.color ?? "",
     createdAt: doc.createdAt, updatedAt: doc.updatedAt,
