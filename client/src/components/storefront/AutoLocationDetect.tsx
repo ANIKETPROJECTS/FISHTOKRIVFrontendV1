@@ -7,8 +7,7 @@ import { waitForMapsReady } from "@/hooks/use-google-maps";
 
 declare global { interface Window { google: any } }
 
-const STORAGE_KEY = "fishtokri_hub";
-const DISMISSED_KEY = "fishtokri_location_dismissed";
+const LOCATION_CHECKED_KEY = "fishtokri_location_checked";
 const BRAND_BLUE = "#364F9F";
 const BRAND_ORANGE = "#F97316";
 
@@ -77,17 +76,19 @@ export function AutoLocationDetect() {
 
   const runDetect = useCallback(async () => {
     return new Promise<void>((resolve) => {
+      const finish = (matched: boolean) => {
+        localStorage.setItem(LOCATION_CHECKED_KEY, "1");
+        if (matched) {
+          setPhase("serviceable");
+          setTimeout(() => setPhase("done"), 3500);
+        } else {
+          setPhase("unserviceable");
+        }
+        resolve();
+      };
+
       if (!navigator.geolocation) {
-        // No GPS — try IP only
-        getIpPincode().then((ipPin) => {
-          if (ipPin && matchPincode(ipPin)) {
-            setPhase("serviceable");
-            setTimeout(() => setPhase("done"), 3500);
-          } else {
-            setPhase("unserviceable");
-          }
-          resolve();
-        });
+        getIpPincode().then((ipPin) => finish(!!(ipPin && matchPincode(ipPin))));
         return;
       }
 
@@ -98,30 +99,16 @@ export function AutoLocationDetect() {
             pos.coords.longitude
           );
           if (pincode && matchPincode(pincode)) {
-            setPhase("serviceable");
-            setTimeout(() => setPhase("done"), 3500);
+            finish(true);
           } else {
-            // GPS gave coords but pincode didn't match or geocode failed — try IP
             const ipPin = await getIpPincode();
-            if (ipPin && matchPincode(ipPin)) {
-              setPhase("serviceable");
-              setTimeout(() => setPhase("done"), 3500);
-            } else {
-              setPhase("unserviceable");
-            }
+            finish(!!(ipPin && matchPincode(ipPin)));
           }
-          resolve();
         },
         async () => {
           // GPS denied or errored — IP fallback
           const ipPin = await getIpPincode();
-          if (ipPin && matchPincode(ipPin)) {
-            setPhase("serviceable");
-            setTimeout(() => setPhase("done"), 3500);
-          } else {
-            setPhase("unserviceable");
-          }
-          resolve();
+          finish(!!(ipPin && matchPincode(ipPin)));
         },
         { timeout: 12000, maximumAge: 300000 }
       );
@@ -129,8 +116,9 @@ export function AutoLocationDetect() {
   }, [matchPincode]);
 
   useEffect(() => {
-    if (localStorage.getItem(STORAGE_KEY)) return;
-    if (localStorage.getItem(DISMISSED_KEY)) return;
+    // Use a dedicated key — NOT the hub storage key, because HubContext
+    // auto-sets that with a default hub on every first visit
+    if (localStorage.getItem(LOCATION_CHECKED_KEY)) return;
 
     let cancelled = false;
 
@@ -176,13 +164,13 @@ export function AutoLocationDetect() {
   }, [runDetect]);
 
   const handleDismiss = useCallback(() => {
-    localStorage.setItem(DISMISSED_KEY, "1");
+    localStorage.setItem(LOCATION_CHECKED_KEY, "1");
     setPhase("done");
   }, []);
 
   const { openPicker } = useHub();
   const handleManualSelect = useCallback(() => {
-    localStorage.setItem(DISMISSED_KEY, "1");
+    localStorage.setItem(LOCATION_CHECKED_KEY, "1");
     setPhase("done");
     openPicker();
   }, [openPicker]);
