@@ -8,6 +8,12 @@ export interface SuperHub {
   imageUrl: string | null;
 }
 
+export interface PincodeEntry {
+  pincode: string;
+  charge: number;
+  timeDelay: number;
+}
+
 export interface SubHub {
   id: string;
   superHubId: string | null;
@@ -15,7 +21,7 @@ export interface SubHub {
   location: string | null;
   imageUrl: string | null;
   dbName: string;
-  pincodes: string[];
+  pincodes: PincodeEntry[];
 }
 
 interface HubContextValue {

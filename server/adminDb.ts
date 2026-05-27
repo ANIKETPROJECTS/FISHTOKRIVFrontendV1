@@ -19,12 +19,21 @@ const superHubSchema = new mongoose.Schema({
   updatedAt: { type: Date, default: Date.now },
 });
 
+const pincodeEntrySchema = new mongoose.Schema(
+  {
+    pincode: { type: String, required: true },
+    charge: { type: Number, default: 0 },
+    timeDelay: { type: Number, default: 0 },
+  },
+  { _id: true }
+);
+
 const subHubSchema = new mongoose.Schema({
   superHubId: { type: mongoose.Schema.Types.ObjectId, ref: "SuperHub", required: true },
   name: { type: String, required: true },
   location: { type: String, default: null },
   imageUrl: { type: String, default: null },
-  pincodes: { type: [String], default: [] },
+  pincodes: { type: [pincodeEntrySchema], default: [] },
   status: { type: String, default: "Active" },
   dbName: { type: String, required: true },
   createdAt: { type: Date, default: Date.now },

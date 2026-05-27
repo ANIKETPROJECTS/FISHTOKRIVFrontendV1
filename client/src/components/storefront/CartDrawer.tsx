@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { useLocation } from "wouter";
 import Lottie from "lottie-react";
 import {
@@ -27,6 +27,7 @@ import tagIconImg from "@/assets/tag.png";
 import { useCart } from "@/context/CartContext";
 import { useCreateOrder } from "@/hooks/use-orders";
 import { useCustomer } from "@/context/CustomerContext";
+import { useHub } from "@/context/HubContext";
 import { useCoupons } from "@/hooks/use-coupons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getHubHeaders } from "@/lib/queryClient";
@@ -119,6 +120,7 @@ export function CartDrawer() {
   const { isCartOpen, setIsCartOpen, items, updateQuantity, updateInstruction, totalPrice, clearCart, appliedCoupon, setAppliedCoupon, discountAmount, computeMaxQty } = useCart();
   const { mutate: createOrder, isPending } = useCreateOrder();
   const { customer } = useCustomer();
+  const { selectedSubHub } = useHub();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [, navigate] = useLocation();
@@ -359,6 +361,41 @@ export function CartDrawer() {
 
   const activeAddressId = selectedAddressId ?? (savedAddresses[0]?.id || null);
 
+  // Pincode-based delivery charge and time delay from sub_hub config
+  const pincodeConfig = useMemo(() => {
+    const selected = savedAddresses.find(a => a.id === activeAddressId);
+    if (!selected?.pincode || !selectedSubHub?.pincodes?.length) return null;
+    return selectedSubHub.pincodes.find(p => p.pincode === selected.pincode) ?? null;
+  }, [activeAddressId, savedAddresses, selectedSubHub]);
+
+  const pincodeDeliveryCharge = pincodeConfig?.charge ?? 0;
+  const pincodeTimeDelay = pincodeConfig?.timeDelay ?? 0;
+
+  // Add N minutes to a formatted time string and return 12h format
+  const addMinutesToTime = useCallback((timeStr: string, minutes: number): string => {
+    if (!timeStr || minutes === 0) return timeStr;
+    const d = parseTimeStr(timeStr);
+    if (!d) return timeStr;
+    d.setMinutes(d.getMinutes() + minutes);
+    let h = d.getHours();
+    const m = d.getMinutes();
+    const period = h >= 12 ? "PM" : "AM";
+    if (h > 12) h -= 12;
+    if (h === 0) h = 12;
+    return `${h}:${String(m).padStart(2, "0")} ${period}`;
+  }, [parseTimeStr]);
+
+  // Returns the slot label adjusted for pincode time delay
+  const getAdjustedSlotLabel = useCallback((slot: Timeslot): string => {
+    if (slot.isInstant || pincodeTimeDelay === 0) return slot.label;
+    const start = slot.startTime ? format24to12(slot.startTime) : null;
+    const end = slot.endTime ? format24to12(slot.endTime) : null;
+    if (start && end) {
+      return `${addMinutesToTime(start, pincodeTimeDelay)} – ${addMinutesToTime(end, pincodeTimeDelay)}`;
+    }
+    return slot.label;
+  }, [pincodeTimeDelay, format24to12, addMinutesToTime]);
+
   const getFallbackImage = (category: string) => {
     switch (category) {
       case "Prawns": return prawnsImg;
@@ -502,8 +539,9 @@ export function CartDrawer() {
       unit: (i as any).unit ?? null,
       imageUrl: i.imageUrl ?? null,
     }));
-    const slotLabel = selectedTimeslot.isInstant ? "Instant Delivery (Porter)" : selectedTimeslot.label;
-    const slotCharge = selectedTimeslot.isInstant ? (selectedTimeslot.extraCharge ?? 0) : 0;
+    const slotLabel = selectedTimeslot.isInstant ? "Instant Delivery (Porter)" : getAdjustedSlotLabel(selectedTimeslot);
+    const instantCharge = selectedTimeslot.isInstant ? (selectedTimeslot.extraCharge ?? 0) : 0;
+    const slotCharge = pincodeDeliveryCharge + instantCharge;
     const subtotal = totalPrice;
     const orderTotal = subtotal - discountAmount + slotCharge;
     const today = new Date();
@@ -926,24 +964,32 @@ export function CartDrawer() {
                         )}
                         <div className="flex justify-between text-sm">
                           <span className="text-muted-foreground">Delivery fee</span>
-                          {selectedTimeslot?.isInstant && (selectedTimeslot.extraCharge ?? 0) > 0 ? (
-                            <span className="font-semibold text-amber-600">+₹{selectedTimeslot.extraCharge}</span>
+                          {pincodeDeliveryCharge > 0 ? (
+                            <span className="font-semibold text-amber-600">+₹{pincodeDeliveryCharge}</span>
                           ) : (
                             <span className="font-semibold text-emerald-600">FREE</span>
                           )}
                         </div>
+                        {pincodeTimeDelay > 0 && selectedTimeslot && !selectedTimeslot.isInstant && (
+                          <p className="text-[11px] text-amber-600/80 italic">+{pincodeTimeDelay} min extra delivery time for your area</p>
+                        )}
                         {selectedTimeslot?.isInstant && (selectedTimeslot.extraCharge ?? 0) > 0 && (
-                          <p className="text-[11px] text-amber-600/80 italic">Instant delivery via Porter — extra charges apply</p>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-amber-600 text-xs">Instant delivery (Porter)</span>
+                            <span className="font-semibold text-amber-600 text-xs">+₹{selectedTimeslot.extraCharge}</span>
+                          </div>
                         )}
                       </div>
                       <div className="pt-2 border-t border-border/40 flex justify-between items-center">
                         <span className="font-bold text-foreground">Total</span>
                         <div className="text-right">
                           {discountAmount > 0 && (
-                            <p className="text-xs text-muted-foreground line-through">₹{totalPrice + (selectedTimeslot?.isInstant ? (selectedTimeslot.extraCharge ?? 0) : 0)}</p>
+                            <p className="text-xs text-muted-foreground line-through">
+                              ₹{totalPrice + pincodeDeliveryCharge + (selectedTimeslot?.isInstant ? (selectedTimeslot.extraCharge ?? 0) : 0)}
+                            </p>
                           )}
                           <span className="text-lg font-bold text-primary">
-                            ₹{totalPrice - discountAmount + (selectedTimeslot?.isInstant ? (selectedTimeslot.extraCharge ?? 0) : 0)}
+                            ₹{totalPrice - discountAmount + pincodeDeliveryCharge + (selectedTimeslot?.isInstant ? (selectedTimeslot.extraCharge ?? 0) : 0)}
                           </span>
                         </div>
                       </div>
@@ -1214,7 +1260,8 @@ export function CartDrawer() {
                           ) : (
                             availableTimeslots.map(slot => {
                               const isSelected = selectedTimeslotId === slot.id;
-                              const timeDisplay = getSlotTimeDisplay(slot);
+                              const adjustedLabel = getAdjustedSlotLabel(slot);
+                              const hasDelay = !slot.isInstant && pincodeTimeDelay > 0;
                               return (
                               <div key={slot.id}>
                                 <button
@@ -1229,8 +1276,11 @@ export function CartDrawer() {
                                     </div>
                                     <div className="flex-1 min-w-0">
                                       <span className={`text-sm font-semibold block truncate ${slot.isInstant ? "text-amber-700" : "text-foreground"}`}>
-                                        {slot.label}
+                                        {adjustedLabel}
                                       </span>
+                                      {hasDelay && (
+                                        <span className="text-[10px] text-amber-600">+{pincodeTimeDelay} min for your area</span>
+                                      )}
                                     </div>
                                     {slot.isInstant && (slot.extraCharge ?? 0) > 0 ? (
                                       <span className="text-xs font-bold text-amber-600 bg-amber-100 px-2 py-0.5 rounded-full shrink-0">+₹{slot.extraCharge}</span>
@@ -1293,14 +1343,17 @@ export function CartDrawer() {
                         <p className="text-xs text-muted-foreground">Total</p>
                         {discountAmount > 0 && (
                           <p className="text-xs text-muted-foreground line-through">
-                            ₹{totalPrice + (selectedTimeslot?.isInstant ? (selectedTimeslot.extraCharge ?? 0) : 0)}
+                            ₹{totalPrice + pincodeDeliveryCharge + (selectedTimeslot?.isInstant ? (selectedTimeslot.extraCharge ?? 0) : 0)}
                           </p>
                         )}
                         <p className="text-xl font-bold text-primary">
-                          ₹{totalPrice - discountAmount + (selectedTimeslot?.isInstant ? (selectedTimeslot.extraCharge ?? 0) : 0)}
+                          ₹{totalPrice - discountAmount + pincodeDeliveryCharge + (selectedTimeslot?.isInstant ? (selectedTimeslot.extraCharge ?? 0) : 0)}
                         </p>
                         {discountAmount > 0 && (
                           <p className="text-[10px] text-emerald-600 font-semibold">Saved ₹{discountAmount} with {appliedCoupon!.code}</p>
+                        )}
+                        {pincodeDeliveryCharge > 0 && (
+                          <p className="text-[10px] text-amber-600">incl. ₹{pincodeDeliveryCharge} delivery fee</p>
                         )}
                         {selectedTimeslot?.isInstant && (selectedTimeslot.extraCharge ?? 0) > 0 && (
                           <p className="text-[10px] text-amber-600">incl. ₹{selectedTimeslot.extraCharge} instant delivery</p>

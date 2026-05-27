@@ -123,7 +123,11 @@ export async function registerRoutes(
         location: h.location ?? null,
         imageUrl: h.imageUrl ?? null,
         dbName: h.dbName,
-        pincodes: h.pincodes ?? [],
+        pincodes: (h.pincodes ?? []).map((p: any) =>
+          typeof p === "string"
+            ? { pincode: p, charge: 0, timeDelay: 0 }
+            : { pincode: p.pincode, charge: p.charge ?? 0, timeDelay: p.timeDelay ?? 0 }
+        ),
       })));
     } catch (err) {
       res.status(500).json({ message: "Failed to fetch sub hubs" });
