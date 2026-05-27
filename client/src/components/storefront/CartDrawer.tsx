@@ -651,8 +651,9 @@ export function CartDrawer() {
   };
 
   const savedTotal = items.reduce((acc, item) => {
-    const original = Math.round(item.price / 0.9);
-    return acc + (original - item.price) * item.quantity;
+    const original = item.originalPrice ?? 0;
+    const discount = original > item.price ? (original - item.price) * item.quantity : 0;
+    return acc + discount;
   }, 0);
 
   return (
