@@ -13,8 +13,8 @@ const BRAND_BLUE = "#364F9F";
 const BRAND_ORANGE = "#F97316";
 
 // ── Update to your actual business contact numbers ─────────────────────
-const BUSINESS_PHONE = "9999999999";
-const BUSINESS_WHATSAPP = "919999999999"; // 91 + 10-digit number, no +
+const BUSINESS_PHONE = "9220200100";
+const BUSINESS_WHATSAPP = "919220200100"; // 91 + 10-digit number, no +
 // ──────────────────────────────────────────────────────────────────────
 
 type Phase = "idle" | "permission" | "detecting" | "serviceable" | "unserviceable" | "done";
