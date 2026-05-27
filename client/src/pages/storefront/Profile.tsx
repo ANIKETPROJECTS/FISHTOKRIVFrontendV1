@@ -387,7 +387,7 @@ function OrderCard({ order, productImageMap }: { order: OrderRequest; productIma
   const items: OrderItem[] = Array.isArray(order.items) ? order.items as OrderItem[] : [];
   const subtotal = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
   const deliveryFee = (order as any).slotCharge ?? 0;
-  const discount = (order as any).coupon?.discountAmount ?? 0;
+  const discount = (order as any).discount ?? (order as any).coupon?.discountAmount ?? 0;
   const total = (order as any).total ?? (subtotal + deliveryFee - discount);
   const status = STATUS_CONFIG[order.status] || STATUS_CONFIG.pending;
   const date = order.createdAt ? new Date(order.createdAt).toLocaleDateString("en-IN", {

@@ -74,15 +74,19 @@ function toOrder(doc: any): OrderRequest {
     timeslotLabel: doc.timeslotLabel ?? null,
     instantDeliveryCharge: doc.instantDeliveryCharge ?? null,
     slotCharge: doc.slotCharge ?? 0,
+    discount: doc.discount ?? 0,
     total: doc.total ?? null,
-    coupon: doc.coupon
-      ? {
-          couponId: doc.coupon.couponId?.toString() ?? null,
-          code: doc.coupon.code,
-          discountType: doc.coupon.discountType,
-          discountValue: doc.coupon.discountValue,
-          discountAmount: doc.coupon.discountAmount,
-        }
+    coupon: (doc.coupons?.[0] ?? doc.coupon)
+      ? (() => {
+          const c = doc.coupons?.[0] ?? doc.coupon;
+          return {
+            couponId: c.couponId?.toString() ?? null,
+            code: c.code,
+            discountType: c.discountType,
+            discountValue: c.discountValue,
+            discountAmount: c.discountAmount ?? doc.discount ?? 0,
+          };
+        })()
       : null,
     paymentMethod: doc.paymentMethod ?? null,
     superHubId: doc.superHubId?.toString() ?? null,
