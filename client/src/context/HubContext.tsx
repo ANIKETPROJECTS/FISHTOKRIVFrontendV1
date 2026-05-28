@@ -85,9 +85,25 @@ export function HubProvider({ children }: { children: ReactNode }) {
         const userPicked = localStorage.getItem(USER_PICKED_KEY);
         if (saved && userPicked) {
           const { superHub, subHub } = JSON.parse(saved);
+          // Load cached data immediately so the app renders fast
           setSelectedSuperHub(superHub);
           setSelectedSubHub(subHub);
           setActiveHubDb(subHub.dbName);
+
+          // Always re-fetch fresh sub-hub data in the background so newly added
+          // pincodes, charges, or time delays are picked up without clearing cache
+          try {
+            const subRes = await fetch(`/api/hubs/sub?superHubId=${superHub.id}`);
+            if (subRes.ok) {
+              const freshSubHubs: SubHub[] = await subRes.json();
+              const freshSubHub = freshSubHubs.find((h) => h.id === subHub.id) ?? null;
+              if (freshSubHub) {
+                setSelectedSubHub(freshSubHub);
+                localStorage.setItem(STORAGE_KEY, JSON.stringify({ superHub, subHub: freshSubHub }));
+              }
+            }
+          } catch {}
+
           return; // returning user has already picked — skip forced picker
         }
       } catch {}
