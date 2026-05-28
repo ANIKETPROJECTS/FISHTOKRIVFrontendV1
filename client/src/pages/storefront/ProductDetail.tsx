@@ -15,7 +15,7 @@ import {
   ChevronLeft, Plus, Minus, Copy, Check, ChefHat, ShoppingBasket,
   ChevronDown, ChevronUp,
 } from "lucide-react";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { SwipeHint } from "@/components/storefront/SwipeHint";
 import type { Product } from "@shared/schema";
@@ -151,7 +151,7 @@ export default function ProductDetail() {
   const [, params] = useRoute("/product/:id");
   const [, setLocation] = useLocation();
   const { data: products, isLoading } = useProducts();
-  const { addToCart, appliedCoupon, setAppliedCoupon, items: cartItems } = useCart();
+  const { addToCart, updateQuantity, appliedCoupon, setAppliedCoupon, items: cartItems } = useCart();
   const { customer, openLoginModal } = useCustomer();
   const [qty, setQty] = useState(1);
   const recipeScrollRef = useRef<HTMLDivElement>(null);
@@ -168,6 +168,11 @@ export default function ProductDetail() {
     ? Math.max(0, product.availableQty - currentCartQty)
     : 999;
   const [offersExpanded, setOffersExpanded] = useState(false);
+
+  // Sync the qty stepper with what's already in the cart
+  useEffect(() => {
+    setQty(currentCartQty > 0 ? currentCartQty : 1);
+  }, [productId, currentCartQty]);
 
   const { coupons: rawProductCoupons } = useProductCoupons(productId, product?.couponIds ?? []);
   const { data: userCouponUsage = {} } = useQuery<Record<string, { usedCount: number; limit: number; isExhausted: boolean; message: string }>>({
@@ -384,34 +389,48 @@ export default function ProductDetail() {
             </div>
 
             {/* Qty + Add to Cart */}
-            <div className="flex items-center gap-4">
-              <div className="flex items-center border border-border/40 rounded-full overflow-hidden">
-                <button
-                  onClick={() => setQty(q => Math.max(1, q - 1))}
-                  className="w-10 h-10 flex items-center justify-center hover:bg-muted transition-colors"
-                >
-                  <Minus className="w-4 h-4" />
-                </button>
-                <span className="w-10 text-center font-semibold text-sm">{qty}</span>
-                <button
-                  onClick={() => setQty(q => Math.min(q + 1, maxAddable))}
-                  disabled={qty >= maxAddable}
-                  className="w-10 h-10 flex items-center justify-center hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  <Plus className="w-4 h-4" />
-                </button>
-              </div>
-              <Button
-                onClick={() => {
-                  if (!customer) { openLoginModal(); return; }
-                  for (let i = 0; i < qty; i++) addToCart(product, 1, true);
-                }}
-                disabled={isUnavailable || maxAddable <= 0}
-                className="flex-1 h-11 rounded-full bg-primary hover:bg-primary/90 text-white font-semibold text-sm shadow-md"
-              >
-                {isUnavailable ? "Out of Stock" : `Add ${qty} to Cart — ₹${(product.price ?? 0) * qty}`}
-              </Button>
-            </div>
+            {(() => {
+              const totalMax = product.availableQty != null ? product.availableQty : 999;
+              const isInCart = currentCartQty > 0;
+              return (
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center border border-border/40 rounded-full overflow-hidden">
+                    <button
+                      onClick={() => setQty(q => Math.max(isInCart ? 1 : 1, q - 1))}
+                      className="w-10 h-10 flex items-center justify-center hover:bg-muted transition-colors"
+                    >
+                      <Minus className="w-4 h-4" />
+                    </button>
+                    <span className="w-10 text-center font-semibold text-sm">{qty}</span>
+                    <button
+                      onClick={() => setQty(q => Math.min(q + 1, totalMax))}
+                      disabled={qty >= totalMax}
+                      className="w-10 h-10 flex items-center justify-center hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <Button
+                    onClick={() => {
+                      if (!customer) { openLoginModal(); return; }
+                      if (isInCart) {
+                        updateQuantity(cartItem!.id, qty);
+                      } else {
+                        addToCart(product, qty, true);
+                      }
+                    }}
+                    disabled={isUnavailable || totalMax <= 0}
+                    className="flex-1 h-11 rounded-full bg-primary hover:bg-primary/90 text-white font-semibold text-sm shadow-md"
+                  >
+                    {isUnavailable
+                      ? "Out of Stock"
+                      : isInCart
+                      ? `Update Cart — ₹${(product.price ?? 0) * qty}`
+                      : `Add ${qty} to Cart — ₹${(product.price ?? 0) * qty}`}
+                  </Button>
+                </div>
+              );
+            })()}
 
             {/* Available Offers — collapsible (matches Order Summary styling) */}
             {liveCoupons.length > 0 && (
