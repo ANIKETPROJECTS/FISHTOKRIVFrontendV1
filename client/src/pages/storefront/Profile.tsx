@@ -442,7 +442,7 @@ function OrderCard({ order, productImageMap }: { order: OrderRequest; productIma
       </div>
 
       <div className="px-4 py-3 space-y-2">
-        {items.slice(0, expanded ? items.length : 2).map((item, i) => {
+        {items.map((item, i) => {
           const resolvedImage = item.imageUrl || productImageMap[String(item.productId)] || getFallbackImage('');
           return (
           <div key={i} className="flex items-center justify-between gap-3">
@@ -457,21 +457,29 @@ function OrderCard({ order, productImageMap }: { order: OrderRequest; productIma
           </div>
           );
         })}
-        {!expanded && items.length > 2 && (
-          <p className="text-xs text-muted-foreground">+{items.length - 2} more item{items.length - 2 > 1 ? "s" : ""}</p>
-        )}
       </div>
 
       <div className="px-4 pb-1 flex items-start gap-2">
         <img src={headerLocationImg} alt="" className="w-3.5 h-3.5 object-contain mt-0.5 shrink-0" />
         <p className="text-xs text-muted-foreground leading-relaxed">{order.address}, {order.deliveryArea}</p>
       </div>
-      {order.timeslotLabel && (
-        <div className="px-4 pb-3 flex items-center gap-2">
-          <Clock className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-          <p className="text-xs text-muted-foreground">{order.timeslotLabel}</p>
-        </div>
-      )}
+      {order.timeslotLabel && (() => {
+        const deliveryDate = (order as any).deliveryDate as string | null | undefined;
+        const orderDay = order.createdAt ? new Date(order.createdAt).toISOString().slice(0, 10) : null;
+        const isScheduledNextDay = deliveryDate && orderDay && deliveryDate !== orderDay;
+        const dateLabel = isScheduledNextDay
+          ? new Date(deliveryDate + "T00:00:00").toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })
+          : null;
+        return (
+          <div className="px-4 pb-3 flex items-center gap-2">
+            <Clock className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+            <p className="text-xs text-muted-foreground">
+              {dateLabel ? <span className="font-medium text-slate-600">{dateLabel} · </span> : null}
+              {order.timeslotLabel}
+            </p>
+          </div>
+        );
+      })()}
 
       {!isCancelled && (
         <div className="px-4 pb-4">
