@@ -384,11 +384,17 @@ export function CartDrawer() {
   const activeAddressId = selectedAddressId ?? (savedAddresses[0]?.id || null);
 
   // Pincode-based delivery charge and time delay from sub_hub config
+  // When the add-address form is open and has a complete valid pincode, preview that pincode's
+  // config in real-time so delivery fee and slot labels update as the user types.
   const pincodeConfig = useMemo(() => {
+    if (!selectedSubHub?.pincodes?.length) return null;
+    if (showAddForm && addForm.pincode.length === 6) {
+      return selectedSubHub.pincodes.find(p => p.pincode === addForm.pincode) ?? null;
+    }
     const selected = savedAddresses.find(a => a.id === activeAddressId);
-    if (!selected?.pincode || !selectedSubHub?.pincodes?.length) return null;
+    if (!selected?.pincode) return null;
     return selectedSubHub.pincodes.find(p => p.pincode === selected.pincode) ?? null;
-  }, [activeAddressId, savedAddresses, selectedSubHub]);
+  }, [activeAddressId, savedAddresses, selectedSubHub, showAddForm, addForm.pincode]);
 
   const pincodeDeliveryCharge = pincodeConfig?.charge ?? 0;
   const pincodeTimeDelay = pincodeConfig?.timeDelay ?? 0;
@@ -1832,13 +1838,6 @@ export function CartDrawer() {
               </a>
             </div>
 
-            <button
-              onClick={() => setShowUnserviceablePopup(false)}
-              className="text-xs font-medium transition-opacity hover:opacity-70"
-              style={{ color: "#364F9F" }}
-            >
-              Close
-            </button>
           </div>
         </DialogContent>
       </Dialog>
