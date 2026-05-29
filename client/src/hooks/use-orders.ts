@@ -36,6 +36,7 @@ export function useCreateOrder() {
       queryClient.invalidateQueries({ queryKey: ["/api/coupons/user-usage"] });
       queryClient.invalidateQueries({ queryKey: ["/api/customer/me/orders"] });
       queryClient.invalidateQueries({ queryKey: ["/api/customer/me"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/timeslots"] });
     },
   });
 }
