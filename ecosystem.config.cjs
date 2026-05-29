@@ -1,7 +1,7 @@
 module.exports = {
   apps: [
     {
-      name: "fishtokri",
+      name: "fishtokriwebsite",
       script: "dist/index.cjs",
       interpreter: "node",
       env: {
