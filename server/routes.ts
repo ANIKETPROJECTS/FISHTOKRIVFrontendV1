@@ -774,7 +774,7 @@ export async function registerRoutes(
           const today = new Date();
           const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
           const countField = (input.deliveryDate && input.deliveryDate !== todayStr) ? "nextDayOrderCount" : "todaysOrderCount";
-          await hub.Timeslot.findByIdAndUpdate(input.timeslotId, { $inc: { [countField]: 1 } });
+          await hub.Timeslot.findByIdAndUpdate(input.timeslotId, { $inc: { [countField]: 1 } }, { strict: false });
         } catch (timeslotCountErr) {
           console.error("[Timeslot] Count increment error:", timeslotCountErr);
         }
