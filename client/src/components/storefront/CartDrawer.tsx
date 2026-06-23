@@ -130,6 +130,7 @@ export function CartDrawer() {
 
   const [isSuccess, setIsSuccess] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const paymentSucceededRef = useRef(false);
   const [paymentMethod, setPaymentMethod] = useState<"cod" | "online">("cod");
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [showUnserviceablePopup, setShowUnserviceablePopup] = useState(false);
@@ -743,6 +744,8 @@ export function CartDrawer() {
           },
         },
         handler: async (response: { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string }) => {
+          // Mark as succeeded immediately so ondismiss (which fires after handler) doesn't show a false "cancelled" toast
+          paymentSucceededRef.current = true;
           try {
             const verifyRes = await fetch("/api/razorpay/verify-payment", {
               method: "POST",
@@ -755,21 +758,36 @@ export function CartDrawer() {
             });
             const verifyData = await verifyRes.json();
             if (!verifyData.verified) {
+              paymentSucceededRef.current = false;
               toast({ title: "Payment verification failed. Contact support.", variant: "destructive" });
               setIsProcessingPayment(false);
               return;
             }
             createOrder(buildOrderPayload(selected, response.razorpay_payment_id), {
-              onSuccess: () => { setIsSuccess(true); clearCart(); setUseWallet(false); setIsProcessingPayment(false); },
-              onError: () => { setIsProcessingPayment(false); },
+              onSuccess: () => {
+                // Force the drawer open so the success screen is visible
+                setIsCartOpen(true);
+                setIsSuccess(true);
+                clearCart();
+                setUseWallet(false);
+                setIsProcessingPayment(false);
+                paymentSucceededRef.current = false;
+              },
+              onError: () => {
+                paymentSucceededRef.current = false;
+                setIsProcessingPayment(false);
+              },
             });
           } catch {
+            paymentSucceededRef.current = false;
             toast({ title: "Payment failed. Please contact support.", variant: "destructive" });
             setIsProcessingPayment(false);
           }
         },
         modal: {
           ondismiss: () => {
+            // ondismiss always fires when the modal closes (even after success), so guard against false toast
+            if (paymentSucceededRef.current) return;
             setIsProcessingPayment(false);
             toast({ title: "Payment cancelled", variant: "destructive" });
           },
@@ -784,6 +802,16 @@ export function CartDrawer() {
       setIsProcessingPayment(false);
     }
   };
+
+  // Preload Razorpay script as soon as cart opens so it's ready instantly when user clicks Pay
+  useEffect(() => {
+    if (isCartOpen && !(window as any).Razorpay) {
+      const script = document.createElement("script");
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.async = true;
+      document.body.appendChild(script);
+    }
+  }, [isCartOpen]);
 
   // Safety net: always clear the cart when the success screen is shown,
   // regardless of whether the mutation onSuccess callback fires.
