@@ -699,11 +699,18 @@ export function CartDrawer() {
 
     // UPI flow: go through Razorpay
     setIsProcessingPayment(true);
+    // Close the drawer BEFORE opening Razorpay so its Sheet backdrop doesn't sit on top
+    // and intercept touch events on the Razorpay bottom sheet (mobile bug).
+    // We will force it back open when payment succeeds to show the success screen.
+    setIsCartOpen(false);
+    // Give the Sheet close animation time to complete before Razorpay opens
+    await new Promise((r) => setTimeout(r, 320));
     try {
       const scriptLoaded = await loadRazorpayScript();
       if (!scriptLoaded) {
         toast({ title: "Payment gateway unavailable. Please try again.", variant: "destructive" });
         setIsProcessingPayment(false);
+        setIsCartOpen(true);
         return;
       }
 
@@ -774,9 +781,11 @@ export function CartDrawer() {
         },
         modal: {
           ondismiss: () => {
-            // ondismiss always fires when the modal closes (even after success), so guard against false toast
+            // ondismiss fires when modal closes — guard against false toast after successful payment
             if (paymentSucceededRef.current) return;
             setIsProcessingPayment(false);
+            // Reopen the cart so user can retry or change method
+            setIsCartOpen(true);
             toast({ title: "Payment cancelled", variant: "destructive" });
           },
         },
@@ -788,6 +797,7 @@ export function CartDrawer() {
     } catch {
       toast({ title: "Payment failed. Please try again.", variant: "destructive" });
       setIsProcessingPayment(false);
+      setIsCartOpen(true);
     }
   };
 
